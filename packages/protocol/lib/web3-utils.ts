@@ -252,10 +252,15 @@ export function deploymentForContract<ContractInstance extends Truffle.ContractI
 ) {
   const Contract = artifacts.require(name)
   const ContractProxy = artifacts.require(name + 'Proxy')
+  const notTest = false
   return (deployer: any, networkName: string, _accounts: string[]) => {
     console.log('Deploying', name)
     deployer.deploy(ContractProxy)
-    deployer.deploy(Contract)
+    if (isInitializableV2(Contract)) {
+      deployer.deploy(Contract, notTest)
+    } else {
+      deployer.deploy(Contract)
+    }
     deployer.then(async () => {
       const proxy: ProxyInstance = await ContractProxy.deployed()
       await proxy._transferOwnership(ContractProxy.defaults().from)
@@ -385,6 +390,12 @@ export function getFunctionSelectorsForContract(contract: any, contractName: str
       }
     })
   return selectors
+}
+
+export function isInitializableV2(contract: any) {
+  return contract.ast.nodes.contains(
+    (astNode: any) => astNode.type === 'ImportDirective' && (astNode.file as string).includes('InitializableV2.sol')
+  )
 }
 
 export async function retryTx(fn: any, args: any[]) {
